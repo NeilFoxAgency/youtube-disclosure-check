@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YouTube disclosure planner</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0f1419; --fg:#e8eef4; --muted:#9aa8b5; --card:#1a222b; --ok:#3dd68c; --bad:#ff6b6b; --warn:#ffd166; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin:0; background:var(--bg); color:var(--fg); line-height:1.5; }
+    main { max-width: 42rem; margin:0 auto; padding:1.25rem; }
+    h1 { font-size:1.4rem; margin:0 0 .4rem; }
+    p.lede { color:var(--muted); margin-top:0; }
+    label, fieldset { display:block; margin:.7rem 0; }
+    fieldset { border:1px solid #314050; border-radius:.5rem; padding:.6rem .8rem; }
+    input[type=text], textarea, select { width:100%; box-sizing:border-box; padding:.45rem .55rem; border-radius:.4rem; border:1px solid #314050; background:var(--card); color:var(--fg); }
+    button { margin:.4rem .4rem 0 0; padding:.45rem .8rem; border-radius:.4rem; border:0; cursor:pointer; background:#3d7ea6; color:#fff; }
+    .card { background:var(--card); padding:.8rem 1rem; border-radius:.5rem; margin-top:1rem; }
+    .banner { background:#3a2a12; color:#ffd166; padding:.6rem .8rem; border-radius:.4rem; font-size:.9rem; }
+    @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>YouTube disclosure planner</h1>
+    <p class="lede">A pre-publish checklist for sponsored, gifted, and affiliate YouTube videos. Runs in your browser. Not legal advice.</p>
+    <p class="banner">This tool is a planning helper. It does not certify FTC or platform compliance.</p>
+    <form id="form">
+      <label>Relationship
+        <select id="relationship">
+          <option value="paid_cash">Paid cash sponsorship</option>
+          <option value="gifted_product">Gifted product</option>
+          <option value="affiliate">Affiliate / commission</option>
+          <option value="mixed">Mixed (fee + affiliate)</option>
+          <option value="none">No material connection</option>
+        </select>
+      </label>
+      <label>Format
+        <select id="format">
+          <option value="longform">Long-form video</option>
+          <option value="shorts">Shorts</option>
+        </select>
+      </label>
+      <label>Brand name (optional)
+        <input id="brandName" type="text" maxlength="80" placeholder="Acme">
+      </label>
+      <fieldset>
+        <legend>Upload plan</legend>
+        <label><input type="checkbox" id="paidPromotionBox"> YouTube paid-promotion box will be checked</label>
+        <label><input type="checkbox" id="verbalInFirst30s"> Spoken disclosure in the first 30 seconds</label>
+        <label><input type="checkbox" id="onScreenLabel"> On-screen Ad / Sponsored label (Shorts)</label>
+        <label><input type="checkbox" id="hasPromoCode"> Promo / discount code in the video or description</label>
+        <label><input type="checkbox" id="hasAffiliateLink"> Affiliate link in the description</label>
+      </fieldset>
+      <label>Draft description (first lines matter)
+        <textarea id="description" rows="6" maxlength="4000" placeholder="Sponsored by Acme. Code DEMO10."></textarea>
+      </label>
+      <button type="submit">Check plan</button>
+      <button type="button" id="copyLine">Copy suggested line</button>
+      <button type="button" id="exportCsv">Export CSV</button>
+    </form>
+    <div id="out" class="card" aria-live="polite"></div>
+  </main>
+  <script src="src/disclosure.js"></script>
+  <script>
+    const form = document.getElementById("form");
+    const out = document.getElementById("out");
+    let last = null;
+    function gather() {
+      return {
+        relationship: document.getElementById("relationship").value,
+        format: document.getElementById("format").value,
+        brandName: document.getElementById("brandName").value,
+        paidPromotionBox: document.getElementById("paidPromotionBox").checked,
+        verbalInFirst30s: document.getElementById("verbalInFirst30s").checked,
+        onScreenLabel: document.getElementById("onScreenLabel").checked,
+        hasPromoCode: document.getElementById("hasPromoCode").checked,
+        hasAffiliateLink: document.getElementById("hasAffiliateLink").checked,
+        description: document.getElementById("description").value,
+      };
+    }
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      last = planDisclosure(gather());
+      if (!last.ok) { out.textContent = last.error; return; }
+      const bits = [];
+      bits.push(last.needed ? (last.ready ? "Ready to review as a viewer." : "Not ready — fix the failing checks.") : "No disclosure plan required.");
+      if (last.suggestedLine) bits.push("Suggested line: " + last.suggestedLine);
+      for (const c of last.checks) {
+        bits.push(c.status.toUpperCase() + " · " + c.id + " — " + c.detail);
+      }
+      out.textContent = bits.join("\n\n");
+    });
+    document.getElementById("copyLine").addEventListener("click", async () => {
+      if (!last || !last.suggestedLine) return;
+      try { await navigator.clipboard.writeText(last.suggestedLine); } catch (_) {}
+    });
+    document.getElementById("exportCsv").addEventListener("click", () => {
+      if (!last) return;
+      const blob = new Blob([planToCsv(last)], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "disclosure-plan.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  </script>
+</body>
+</html>
