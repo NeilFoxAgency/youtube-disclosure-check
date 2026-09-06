@@ -1,0 +1,10 @@
+{
+  "name": "youtube-disclosure-check",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Privacy-first pre-publish checklist for YouTube sponsorship, gifted-product, and affiliate disclosures",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/disclosure.test.js"
+  }
+}
