@@ -19,6 +19,9 @@ This tool is a planning helper. It is **not legal advice** and does not certify 
 - Requires an on-screen or spoken disclosure for Shorts
 - Scans the first 160 characters of a draft description for clear vs weak wording
 - Warns when a promo code or affiliate link sits away from a clear disclosure
+- Flags a `#ad` or “sponsored” line buried after the first 160 characters
+- Fails plans that put the only written disclosure in a pinned comment or on the end screen
+- Treats `bad` as a non-match for `ad` (word boundaries)
 - Suggests a plain first line
 - Exports a CSV of checks (formula-safe)
 
