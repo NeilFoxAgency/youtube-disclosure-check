@@ -50,6 +50,8 @@
         <label><input type="checkbox" id="onScreenLabel"> On-screen Ad / Sponsored label (Shorts)</label>
         <label><input type="checkbox" id="hasPromoCode"> Promo / discount code in the video or description</label>
         <label><input type="checkbox" id="hasAffiliateLink"> Affiliate link in the description</label>
+        <label><input type="checkbox" id="disclosureOnlyInPinnedComment"> Written disclosure would live only in a pinned comment</label>
+        <label><input type="checkbox" id="disclosureOnlyOnEndScreen"> Written or on-screen disclosure would appear only on the end screen</label>
       </fieldset>
       <label>Draft description (first lines matter)
         <textarea id="description" rows="6" maxlength="4000" placeholder="Sponsored by Acme. Code DEMO10."></textarea>
@@ -75,6 +77,8 @@
         onScreenLabel: document.getElementById("onScreenLabel").checked,
         hasPromoCode: document.getElementById("hasPromoCode").checked,
         hasAffiliateLink: document.getElementById("hasAffiliateLink").checked,
+        disclosureOnlyInPinnedComment: document.getElementById("disclosureOnlyInPinnedComment").checked,
+        disclosureOnlyOnEndScreen: document.getElementById("disclosureOnlyOnEndScreen").checked,
         description: document.getElementById("description").value,
       };
     }

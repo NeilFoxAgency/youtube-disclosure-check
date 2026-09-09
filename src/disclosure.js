@@ -37,6 +37,8 @@ const RELATIONSHIPS = new Set([
 
 const FORMATS = new Set(["longform", "shorts"]);
 
+const HEAD_CHARS = 160;
+
 function normalize(text) {
   return String(text || "")
     .toLowerCase()
@@ -50,12 +52,9 @@ function firstLines(text, maxChars) {
   return raw.slice(0, maxChars);
 }
 
-function containsAny(haystack, phrases) {
-  return phrases.filter((p) => haystack.includes(p));
-}
-
 function wordBoundaryHit(haystack, word) {
-  const re = new RegExp(`(?:^|[^a-z0-9])${word}(?:$|[^a-z0-9])`, "i");
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i");
   return re.test(haystack);
 }
 
@@ -64,7 +63,37 @@ function findWeak(haystack) {
 }
 
 function findClear(haystack) {
-  return CLEAR_WORDS.filter((w) => haystack.includes(w));
+  return CLEAR_WORDS.filter((w) => {
+    if (w.includes(" ")) return haystack.includes(w);
+    return wordBoundaryHit(haystack, w);
+  });
+}
+
+/**
+ * Return the earliest index of a clear disclosure phrase in the raw
+ * description (case-insensitive, # treated as a separator).
+ * -1 when none exist.
+ */
+function firstClearIndex(raw) {
+  const source = String(raw || "").replace(/[#*_]/g, " ");
+  const lower = source.toLowerCase();
+  let best = -1;
+  for (const phrase of CLEAR_WORDS) {
+    if (phrase.includes(" ")) {
+      const i = lower.indexOf(phrase);
+      if (i >= 0 && (best < 0 || i < best)) best = i;
+      continue;
+    }
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i");
+    const m = re.exec(source);
+    if (m) {
+      const at = lower.indexOf(phrase, Math.max(0, m.index - 1));
+      const pos = at >= 0 ? at : m.index;
+      if (best < 0 || pos < best) best = pos;
+    }
+  }
+  return best;
 }
 
 function planDisclosure(input) {
@@ -83,12 +112,15 @@ function planDisclosure(input) {
   const description = String(input.description || "");
   const hasPromo = Boolean(input.hasPromoCode);
   const hasAffiliate = Boolean(input.hasAffiliateLink);
+  const pinnedOnly = Boolean(input.disclosureOnlyInPinnedComment);
+  const endScreenOnly = Boolean(input.disclosureOnlyOnEndScreen);
 
   const needed = relationship !== "none";
-  const head = normalize(firstLines(description, 160));
+  const head = normalize(firstLines(description, HEAD_CHARS));
   const clearHits = findClear(head);
   const weakHits = findWeak(head);
   const clearInHead = clearHits.length > 0;
+  const buriedAt = firstClearIndex(description);
 
   const flags = [];
   const checks = [];
@@ -149,15 +181,20 @@ function planDisclosure(input) {
     });
     flags.push("missing_description_disclosure");
   } else if (!clearInHead) {
+    const buried =
+      buriedAt >= HEAD_CHARS
+        ? ` A clear word appears later (around character ${buriedAt + 1}), which most mobile viewers never expand.`
+        : "";
     checks.push({
       id: "description_head",
       status: "fail",
       detail:
         weakHits.length > 0
-          ? `First lines use weak wording (${weakHits.join(", ")}). Use Ad, Sponsored, Paid partnership, or Paid promotion.`
-          : "First 160 characters of the description do not contain a clear disclosure word.",
+          ? `First lines use weak wording (${weakHits.join(", ")}). Use Ad, Sponsored, Paid partnership, or Paid promotion.${buried}`
+          : `First ${HEAD_CHARS} characters of the description do not contain a clear disclosure word.${buried}`,
     });
     flags.push("weak_or_missing_description_words");
+    if (buriedAt >= HEAD_CHARS) flags.push("disclosure_buried");
   } else {
     checks.push({
       id: "description_head",
@@ -176,6 +213,38 @@ function planDisclosure(input) {
         : "If a code or affiliate link is used, put the disclosure in the same opening block as the link — not after a hashtag wall.",
     });
     if (!nearOffer) flags.push("offer_separated_from_disclosure");
+  }
+
+  if (pinnedOnly) {
+    checks.push({
+      id: "pinned_comment",
+      status: "fail",
+      detail:
+        "A pinned comment is easy to miss and is not a substitute for a spoken line plus a clear first-line description.",
+    });
+    flags.push("pinned_comment_only");
+  } else {
+    checks.push({
+      id: "pinned_comment",
+      status: "pass",
+      detail: "Disclosure is not planned as pinned-comment-only.",
+    });
+  }
+
+  if (endScreenOnly) {
+    checks.push({
+      id: "end_screen",
+      status: "fail",
+      detail:
+        "An end-screen card comes after the pitch. Viewers who drop off never see it. Put the disclosure at the start.",
+    });
+    flags.push("end_screen_only");
+  } else {
+    checks.push({
+      id: "end_screen",
+      status: "pass",
+      detail: "Disclosure is not planned as end-screen-only.",
+    });
   }
 
   if (weakHits.length && !clearInHead) {
@@ -201,9 +270,11 @@ function planDisclosure(input) {
     flags,
     checks,
     suggestedLine,
+    buriedAt: buriedAt >= 0 ? buriedAt : null,
     score: { pass, fail, warn },
     sources: {
-      ftcQa: "https://www.ftc.gov/business-guidance/resources/ftcs-endorsement-guides-what-people-are-asking",
+      ftcQa:
+        "https://www.ftc.gov/business-guidance/resources/ftcs-endorsement-guides-what-people-are-asking",
     },
   };
 }
@@ -228,11 +299,13 @@ function planToCsv(plan) {
 const api = {
   CLEAR_WORDS,
   WEAK_WORDS,
+  HEAD_CHARS,
   planDisclosure,
   planToCsv,
   csvSafe,
   findClear,
   findWeak,
+  firstClearIndex,
 };
 
 if (typeof module !== "undefined" && module.exports) {

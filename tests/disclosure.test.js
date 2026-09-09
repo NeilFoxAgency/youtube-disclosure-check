@@ -6,6 +6,8 @@ const {
   csvSafe,
   findClear,
   findWeak,
+  firstClearIndex,
+  HEAD_CHARS,
 } = require("../src/disclosure.js");
 
 test("rejects unknown relationship", () => {
@@ -90,7 +92,7 @@ test("affiliate without clear head warns about offer placement", () => {
 });
 
 test("findClear and findWeak are conservative", () => {
-  assert.deepEqual(findClear("this video is sponsored by acme"), ["sponsored", "sponsor"]);
+  assert.deepEqual(findClear("this video is sponsored by acme"), ["sponsored"]);
   assert.ok(findWeak("thanks for watching this collab").includes("thanks"));
   assert.ok(!findWeak("this spacetime experiment").includes("sp"));
 });
@@ -111,4 +113,58 @@ test("planToCsv includes check rows", () => {
   const csv = planToCsv(r);
   assert.match(csv, /check_id,status,detail/);
   assert.match(csv, /platform_box,pass/);
+});
+
+test("buried #ad after the fold is flagged", () => {
+  const pad = "Watch the full setup, gear list, and chapters below. ".repeat(6);
+  assert.ok(pad.length > HEAD_CHARS);
+  const r = planDisclosure({
+    relationship: "paid_cash",
+    format: "longform",
+    paidPromotionBox: true,
+    verbalInFirst30s: true,
+    description: pad + "#ad Sponsored by Acme",
+  });
+  assert.equal(r.ready, false);
+  assert.ok(r.flags.includes("disclosure_buried"));
+  assert.ok(r.buriedAt >= HEAD_CHARS);
+});
+
+test("pinned-comment-only plan fails even with a good description", () => {
+  const r = planDisclosure({
+    relationship: "paid_cash",
+    format: "longform",
+    paidPromotionBox: true,
+    verbalInFirst30s: true,
+    description: "Sponsored by Acme.",
+    disclosureOnlyInPinnedComment: true,
+  });
+  assert.equal(r.ready, false);
+  assert.ok(r.flags.includes("pinned_comment_only"));
+  const row = r.checks.find((c) => c.id === "pinned_comment");
+  assert.equal(row.status, "fail");
+});
+
+test("end-screen-only plan fails", () => {
+  const r = planDisclosure({
+    relationship: "gifted_product",
+    format: "longform",
+    paidPromotionBox: true,
+    verbalInFirst30s: true,
+    description: "Ad: Acme sent this product for me to try.",
+    disclosureOnlyOnEndScreen: true,
+  });
+  assert.equal(r.ready, false);
+  assert.ok(r.flags.includes("end_screen_only"));
+});
+
+test("firstClearIndex finds #ad after punctuation", () => {
+  assert.equal(firstClearIndex("Ad: hello"), 0);
+  assert.ok(firstClearIndex("hello world #sponsored") > 10);
+  assert.equal(firstClearIndex("no material words here"), -1);
+});
+
+test("findClear uses word boundaries so 'bad' is not an ad", () => {
+  assert.deepEqual(findClear("this was a bad idea"), []);
+  assert.ok(findClear("ad: acme paid this").includes("ad"));
 });
