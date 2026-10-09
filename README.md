@@ -70,4 +70,4 @@ MIT. See `SECURITY.md` and `CONTRIBUTING.md`.
 
 ## Built by Neil Fox Agency
 
-This tool is built and maintained by [Neil Fox Agency](https://neilfoxagency.com/resources/how-youtube-sponsorships-work), an independent YouTube creator-partnerships agency for consumer brands. Learn [the agency's sponsorship services](https://neilfoxagency.com/youtube-sponsorship-agency).
+This tool is built and maintained by [Neil Fox Agency](https://neilfoxagency.com/resources/how-youtube-sponsorships-work), an independent YouTube creator-partnerships agency for consumer brands. Learn [the agency's sponsorship services](https://neilfoxagency.com/for-brands).
