@@ -23,6 +23,7 @@ This tool is a planning helper. It is **not legal advice** and does not certify 
 - Fails plans that put the only written disclosure in a pinned comment or on the end screen
 - Treats `bad` as a non-match for `ad` (word boundaries)
 - Suggests a plain first line
+- Builds a print/copy one-page report for a campaign folder
 - Exports a CSV of checks (formula-safe)
 
 It does **not** fetch YouTube Studio, scan a live video, or store campaign data.
@@ -35,7 +36,7 @@ Node 20+. No install required.
 node --test tests/disclosure.test.js
 ```
 
-Open `index.html` in a browser. The page loads only same-origin `src/disclosure.js`.
+Open `index.html` in a browser. The page loads only same-origin `src/disclosure.js` and `src/report.js`.
 
 Library use:
 
@@ -51,6 +52,8 @@ const plan = planDisclosure({
 });
 ```
 
+`planToTextReport(plan, input, { generatedAt: "2026-11-10" })` from `src/report.js` returns the same one-page report the Print button produces.
+
 ## Privacy
 
 No accounts, cookies, analytics, or network calls from page logic. Example copy is synthetic.
@@ -64,7 +67,6 @@ No accounts, cookies, analytics, or network calls from page logic. Example copy 
 ## Roadmap
 
 - Optional second-language word lists
-- Printable one-pager for a campaign folder
 - Pairing with `creator-deal-math` fee output without sharing data
 
 ## License

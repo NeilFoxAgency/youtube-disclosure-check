@@ -261,7 +261,9 @@ function planDisclosure(input) {
       ? `Ad: I may earn a commission if you use the link or code for ${brand}.`
       : relationship === "gifted_product"
         ? `Ad: ${brand} sent this product for me to try.`
-        : `This video is sponsored by ${brand}.`;
+        : relationship === "mixed"
+          ? `This video is sponsored by ${brand}, and I may earn a commission if you use the link or code.`
+          : `This video is sponsored by ${brand}.`;
 
   return {
     ok: true,
