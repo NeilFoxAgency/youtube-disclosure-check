@@ -9,6 +9,7 @@ const {
   firstClearIndex,
   HEAD_CHARS,
 } = require("../src/disclosure.js");
+const { planToTextReport } = require("../src/report.js");
 
 test("rejects unknown relationship", () => {
   const r = planDisclosure({ relationship: "secret" });
@@ -167,4 +168,51 @@ test("firstClearIndex finds #ad after punctuation", () => {
 test("findClear uses word boundaries so 'bad' is not an ad", () => {
   assert.deepEqual(findClear("this was a bad idea"), []);
   assert.ok(findClear("ad: acme paid this").includes("ad"));
+});
+
+test("mixed relationship suggests a line covering fee and commission", () => {
+  const r = planDisclosure({
+    relationship: "mixed",
+    format: "longform",
+    paidPromotionBox: true,
+    verbalInFirst30s: true,
+    description: "Sponsored by Acme.",
+    brandName: "Acme",
+  });
+  assert.match(r.suggestedLine, /sponsored by Acme/i);
+  assert.match(r.suggestedLine, /commission/i);
+});
+
+test("planToTextReport lists inputs, verdict, score, and checks", () => {
+  const input = {
+    relationship: "paid_cash",
+    format: "longform",
+    brandName: "Acme",
+    paidPromotionBox: true,
+    verbalInFirst30s: false,
+    description: "Sponsored by Acme.",
+  };
+  const plan = planDisclosure(input);
+  const report = planToTextReport(plan, input, { generatedAt: "2026-11-10" });
+  assert.match(report, /Generated: 2026-11-10/);
+  assert.match(report, /Brand: Acme/);
+  assert.match(report, /Relationship: Paid cash sponsorship/);
+  assert.match(report, /Format: Long-form video/);
+  assert.match(report, /Verdict: Not ready/);
+  assert.match(report, /Score: \d+ pass, 1 fail, 0 warn/);
+  assert.match(report, /\[FAIL\] verbal_first_30s/);
+  assert.match(report, /\[PASS\] platform_box/);
+  assert.match(report, /Suggested first line: This video is sponsored by Acme\./);
+  assert.match(report, /Not legal advice/);
+  assert.match(report, /ftc\.gov/);
+});
+
+test("planToTextReport handles a no-connection plan and a blank date", () => {
+  const plan = planDisclosure({ relationship: "none", format: "shorts" });
+  const report = planToTextReport(plan, { relationship: "none", format: "shorts" });
+  assert.match(report, /Generated: __________/);
+  assert.match(report, /Brand: \(not named\)/);
+  assert.match(report, /Format: Shorts/);
+  assert.match(report, /Verdict: No disclosure plan required/);
+  assert.doesNotMatch(report, /Suggested first line/);
 });

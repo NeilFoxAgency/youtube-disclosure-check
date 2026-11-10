@@ -17,7 +17,16 @@
     button { margin:.4rem .4rem 0 0; padding:.45rem .8rem; border-radius:.4rem; border:0; cursor:pointer; background:#3d7ea6; color:#fff; }
     .card { background:var(--card); padding:.8rem 1rem; border-radius:.5rem; margin-top:1rem; }
     .banner { background:#3a2a12; color:#ffd166; padding:.6rem .8rem; border-radius:.4rem; font-size:.9rem; }
+    .print-only { display:none; }
     @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+    @media print {
+      body { background:#fff; color:#000; }
+      form, .banner, #out, footer { display:none !important; }
+      main { max-width:none; padding:0; }
+      .print-only { display:block; }
+      .print-only h2 { font-size:1.1rem; margin:0 0 .5rem; }
+      .print-only pre { white-space:pre-wrap; font:12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:#000; margin:0; }
+    }
   </style>
 </head>
 <body>
@@ -59,14 +68,21 @@
       </label>
       <button type="submit">Check plan</button>
       <button type="button" id="copyLine">Copy suggested line</button>
+      <button type="button" id="copyReport">Copy report</button>
+      <button type="button" id="printReport">Print one-pager</button>
       <button type="button" id="exportCsv">Export CSV</button>
     </form>
     <div id="out" class="card" aria-live="polite"></div>
+    <section id="report" class="print-only" aria-label="Printable one-page report">
+      <h2>Disclosure plan report</h2>
+      <pre id="reportText"></pre>
+    </section>
   </main>
   <footer>
     <p>Built by <a href="https://neilfoxagency.com/resources/how-youtube-sponsorships-work">Neil Fox Agency</a>, a YouTube sponsorship agency for consumer brands.</p>
   </footer>
   <script src="src/disclosure.js"></script>
+  <script src="src/report.js"></script>
   <script>
     const form = document.getElementById("form");
     const out = document.getElementById("out");
@@ -101,6 +117,23 @@
     document.getElementById("copyLine").addEventListener("click", async () => {
       if (!last || !last.suggestedLine) return;
       try { await navigator.clipboard.writeText(last.suggestedLine); } catch (_) {}
+    });
+    function currentReport() {
+      if (!last || !last.ok) return "";
+      return planToTextReport(last, gather(), {
+        generatedAt: new Date().toISOString().slice(0, 10),
+      });
+    }
+    document.getElementById("copyReport").addEventListener("click", async () => {
+      const text = currentReport();
+      if (!text) return;
+      try { await navigator.clipboard.writeText(text); } catch (_) {}
+    });
+    document.getElementById("printReport").addEventListener("click", () => {
+      const text = currentReport();
+      if (!text) return;
+      document.getElementById("reportText").textContent = text;
+      window.print();
     });
     document.getElementById("exportCsv").addEventListener("click", () => {
       if (!last) return;
